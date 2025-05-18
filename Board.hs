@@ -1,34 +1,41 @@
 module Board where
 
+import Data.Char (ord)
+
 -- chess data types
-data PieceType = Pawn | Rook | Bishop | Knight | King | Queen
-data Color = Red | Blue
+data PieceType = Pawn | Rook | Bishop | Knight | King | Queen deriving Eq
+data Color = Red | Blue deriving Eq
+
+switchColor :: Color -> Color
+switchColor Red = Blue
+switchColor Blue = Red
+
 data Square = Empty | Piece { pieceType :: PieceType, color :: Color }
 
 -- Check if a given square is empty
 isEmpty :: Square -> Bool
 isEmpty Empty = True
 isEmpty _ = False
-type Column = [Square]
-newtype Board = Board [Column]
+type Row = [Square]
+newtype Board = Board [Row]
 
 instance Show Board where
 
     show :: Board -> String
-    show (Board columns) = loopRows columns 0
+    show (Board rows) = loopRows rows 0
         where
-            loopRows :: [Column] -> Int -> String
-            loopRows columns rowNum 
-                | rowNum > 7 = ""
-                | otherwise =  loopSquares (columns !! rowNum) rowNum 0 ++ "\n" ++ loopRows columns (rowNum + 1)
+            loopRows :: [Row] -> Int -> String
+            loopRows rows rowNum 
+                | rowNum > 7 = "a b c d e f g h"
+                | otherwise =  loopSquares (rows !! rowNum) rowNum 0 ++ "\ESC[0;37m" ++ show (reverse [1..8] !! rowNum) ++ "\n" ++ loopRows rows (rowNum + 1)
             
-            loopSquares :: Column -> Int -> Int -> String
-            loopSquares column rowNum squareNum
+            loopSquares :: Row -> Int -> Int -> String
+            loopSquares row rowNum squareNum
                 | squareNum > 7 = ""
-                | isEmpty $ column !! squareNum = showEmpty rowNum squareNum ++ " " ++ loopSquares column rowNum (squareNum + 1)
-                | otherwise = showColorAnsi (color piece) ++ showPiece (pieceType piece) ++ " " ++ loopSquares column rowNum (squareNum + 1)
+                | isEmpty $ row !! squareNum = showEmpty rowNum squareNum ++ " " ++ loopSquares row rowNum (squareNum + 1)
+                | otherwise = showColorAnsi (color piece) ++ showPiece (pieceType piece) ++ " " ++ loopSquares row rowNum (squareNum + 1)
                 where
-                    piece = column !! squareNum
+                    piece = row !! squareNum
 
             showEmpty :: Int -> Int -> String
             showEmpty rowNum squareNum
@@ -49,6 +56,12 @@ instance Show Board where
             showPiece King = "\60770" --  scape code
             showPiece Pawn = "\60772" --  scape code
 
+getSquareFromCoordinates :: Board -> Coordinates -> Square
+getSquareFromCoordinates (Board rows) (y, x) = (rows !! y) !! x
+
 -- a move represent the movement from the piece in the first coordinate
 -- to the place of the second coordinate. with the exeption of castling
-data Move = SingleMove ((Int, Int), (Int, Int)) | ShortCastle | LongCastle
+
+-- coordinates follow the (y, x) structure for ease of use even if non standard
+type Coordinates = (Int, Int)
+data Move = SingleMove (Coordinates, Coordinates) | ShortCastle | LongCastle deriving Show

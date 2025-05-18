@@ -1,12 +1,12 @@
 module Main where
 
 import Board
-import Data.Char (digitToInt)
+import Data.Char (digitToInt, ord)
 
-emptyBoardColumn :: Column
-emptyBoardColumn = replicate 8 Empty 
+emptyBoardRow :: Row
+emptyBoardRow = replicate 8 Empty 
 
-backrank :: Color -> Column
+backrank :: Color -> Row
 backrank color = 
     [ Piece { pieceType = Rook,   color = color }
     , Piece { pieceType = Knight, color = color }
@@ -21,29 +21,69 @@ getDefaultStartingBoard :: Board
 getDefaultStartingBoard = Board
     [ backrank Red
     , replicate 8 Piece {pieceType=Pawn, color=Red}
-    , emptyBoardColumn
-    , emptyBoardColumn
-    , emptyBoardColumn
-    , emptyBoardColumn
+    , emptyBoardRow
+    , emptyBoardRow
+    , emptyBoardRow
+    , emptyBoardRow
     , replicate 8 Piece {pieceType=Pawn, color=Blue}
     , backrank Blue ]
 
---isPawnInDefaultPosition :: Board -> Int ->
+pawnDefaultPosition :: Coordinates -> Color -> Coordinates
+pawnDefaultPosition (y, x) Red = (1, x)
+pawnDefaultPosition (y, x) Blue = (6, x)
 
-coordinatesParser :: String -> (Int, Int)
-coordinatesParser string = (3, firstCoord)
+isPawnInDefaultPosition :: Board -> Coordinates -> Color -> Bool
+isPawnInDefaultPosition board (y,x) Red
+    | y /= 3 = False
+    | isEmpty pawnStartSquare || pieceType pawnStartSquare /= Pawn = False
+    | otherwise = True
     where
-        firstCoord :: Int
-        firstCoord = digitToInt $ string !! 1
+        pawnStartSquare = getSquareFromCoordinates board (pawnDefaultPosition (y,x) Red)
 
-parseMove :: String -> Maybe Move
+isPawnInDefaultPosition board (y,x) Blue
+    | y /= 4 = False
+    | isEmpty pawnStartSquare || pieceType pawnStartSquare /= Pawn = False
+    | otherwise = True
+    where
+        pawnStartSquare = getSquareFromCoordinates board (pawnDefaultPosition (y,x) Blue)
+
+coordinatesParser :: String -> Coordinates
+coordinatesParser string = (firstCoord, secondCoord)
+    where
+        firstCoord = 8 - digitToInt (string !! 1)
+        secondCoord = ord (string !! 0) - 97
+
+parseMove :: String -> Move
 parseMove inputString
-    | inputString == "" = Nothing
-    | inputString == "O-O" = Just ShortCastle
-    | inputString == "O-O-O" = Just LongCastle
-    | inputSize == 2 = Just ShortCastle
+    | inputString == "O-O" = ShortCastle
+    | inputString == "O-O-O" = LongCastle
+    | otherwise = SingleMove (startCoords, endCoords)
     where
-        inputSize = length inputString
+        startingString = take 2 inputString
+        endingString = reverse $ take 2 $ reverse inputString
+        startCoords = coordinatesParser startingString
+        endCoords = coordinatesParser endingString
+
+applyMove :: Board -> Move -> Board
+applyMove (Board rows) (SingleMove ((y0,x0),(y1,x1))) = Board $ getNewBoard 0
+    where
+        getNewBoard :: Int -> [Row]
+        getNewBoard rowNum 
+            | rowNum >= 8 = []
+            | rowNum /= y0 && rowNum /= y1 = (rows !! rowNum) : getNewBoard (rowNum + 1)
+            | otherwise = getNewRow 0 rowNum : getNewBoard (rowNum + 1)
+        getNewRow :: Int -> Int -> Row
+        getNewRow squareNum rowNum
+            | squareNum >= 8 = []
+            | rowNum == y0 && squareNum == x0 = Empty : getNewRow (squareNum + 1) rowNum
+            | rowNum == y1 && squareNum == x1 = getSquareFromCoordinates (Board rows) (y0,x0) : getNewRow (squareNum + 1) rowNum
+            | otherwise = getSquareFromCoordinates (Board rows) (rowNum, squareNum) : getNewRow (squareNum + 1) rowNum
 
 main :: IO()
-main = print getDefaultStartingBoard
+main = gameLoop getDefaultStartingBoard Blue
+
+gameLoop :: Board -> Color -> IO()
+gameLoop board color = do
+    print board
+    moveInput <- getLine
+    gameLoop (applyMove board (parseMove moveInput)) (switchColor color)
