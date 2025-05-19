@@ -1,7 +1,11 @@
 module Main where
 
+import ValidMoves
 import Board
+
 import Data.Char (digitToInt, ord)
+import Data.Binary.Builder (flush)
+import System.IO
 
 emptyBoardRow :: Row
 emptyBoardRow = replicate 8 Empty 
@@ -80,10 +84,19 @@ applyMove (Board rows) (SingleMove ((y0,x0),(y1,x1))) = Board $ getNewBoard 0
             | otherwise = getSquareFromCoordinates (Board rows) (rowNum, squareNum) : getNewRow (squareNum + 1) rowNum
 
 main :: IO()
-main = gameLoop getDefaultStartingBoard Blue
+main = putStr "\ESC[2J" >> gameLoop getDefaultStartingBoard Blue
 
 gameLoop :: Board -> Color -> IO()
 gameLoop board color = do
+    putStrLn $ "Current turn: " ++ show color
+    let currentValidMoves = [validMoves board (i,j) color | i <- [0..7], j <- [0..7]] >>= id
+    -- print currentValidMoves
     print board
+    putStr "Enter your move: "
+    hFlush stdout
     moveInput <- getLine
-    gameLoop (applyMove board (parseMove moveInput)) (switchColor color)
+    let parsedMove = parseMove moveInput
+    if parsedMove `elem` currentValidMoves
+    then putStr "\ESC[2J" >> gameLoop (applyMove board (parseMove moveInput)) (switchColor color)
+    else putStrLn "\ESC[2J \60039 Invalid move" >> gameLoop board color
+

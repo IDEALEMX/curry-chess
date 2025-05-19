@@ -4,7 +4,7 @@ import Data.Char (ord)
 
 -- chess data types
 data PieceType = Pawn | Rook | Bishop | Knight | King | Queen deriving Eq
-data Color = Red | Blue deriving Eq
+data Color = Red | Blue deriving (Eq, Show)
 
 switchColor :: Color -> Color
 switchColor Red = Blue
@@ -59,9 +59,21 @@ instance Show Board where
 getSquareFromCoordinates :: Board -> Coordinates -> Square
 getSquareFromCoordinates (Board rows) (y, x) = (rows !! y) !! x
 
+getColorFromCoordinates :: Board -> Coordinates -> Color
+getColorFromCoordinates board coordinates
+    | Piece _ color <- square = color
+    where
+        square = getSquareFromCoordinates board coordinates
+
+getPieceTypeFromCoordinates :: Board -> Coordinates -> PieceType
+getPieceTypeFromCoordinates board coordinates
+    | Piece pieceType _ <- square = pieceType
+    where
+        square = getSquareFromCoordinates board coordinates
+
 -- a move represent the movement from the piece in the first coordinate
 -- to the place of the second coordinate. with the exeption of castling
 
 -- coordinates follow the (y, x) structure for ease of use even if non standard
 type Coordinates = (Int, Int)
-data Move = SingleMove (Coordinates, Coordinates) | ShortCastle | LongCastle deriving Show
+data Move = SingleMove (Coordinates, Coordinates) | ShortCastle | LongCastle deriving (Show, Eq)
